@@ -10,3 +10,14 @@ class AppItem(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
     pass
+
+
+class Product(scrapy.Item):
+    category = scrapy.Field()
+    brand = scrapy.Field()
+    article = scrapy.Field()
+    title = scrapy.Field()
+    price = scrapy.Field()
+    description = scrapy.Field()
+    img = scrapy.Field()
+    link = scrapy.Field()
