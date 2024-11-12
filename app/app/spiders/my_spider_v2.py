@@ -6,7 +6,7 @@ import scrapy
 from scrapy.http import Response
 
 from ..items import Product
-from ..processor_func import strip, url_join
+from ..processor_func import strip, url_join, clear_rub, to_float
 from scrapy.loader import ItemLoader
 # from scrapy.loader.processors import TakeFirst, MapCompose
 from itemloaders.processors import TakeFirst, MapCompose, Join
@@ -41,13 +41,13 @@ class SpiderMan(scrapy.Spider):
 
     def parse_card(self, response: Response, **kwargs: Any) -> Any:
         loader = ItemLoader(item=Product(), response=response)
-        loader.default_input_processor = MapCompose(strip)
+        # loader.default_input_processor = MapCompose(strip)
         loader.default_output_processor = TakeFirst()
         loader.add_value('category', response.meta.get('category'))
         loader.add_css('article', 'div.article.iblock span.value::text')
         loader.add_css('brand', "a.brand_picture img::attr(title)")
         loader.add_value('title', response.meta.get('title'))
-        loader.add_css('price', 'div.price::text')
+        loader.add_css('price', 'div.price::text', MapCompose(strip, clear_rub, to_float))
         loader.add_css('description', 'div.preview_text::text')
         loader.add_css('img', 'div.offers_img.wof img::attr(src)')
         loader.add_css('img', "div.slides li a::attr(href)", MapCompose(url_join), Join(', '))
