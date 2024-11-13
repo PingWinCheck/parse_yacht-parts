@@ -1,8 +1,16 @@
-from typing import Any
+import logging
+from typing import Any, Iterable
 
 import scrapy
+
 from scrapy.http import Response
 
+from ..items import Product
+from ..processor_func import strip, url_join, clear_rub, to_float
+from scrapy.loader import ItemLoader
+# from scrapy.loader.processors import TakeFirst, MapCompose
+from itemloaders.processors import TakeFirst, MapCompose, Join
+from ..utils import checkout_brand_file_in_title
 
 class SpiderMan(scrapy.Spider):
     name = 'spiderman'
@@ -11,7 +19,7 @@ class SpiderMan(scrapy.Spider):
     def parse(self, response: Response, **kwargs: Any) -> Any:
         categories = response.css('li.sect')
         for category_ in categories:  # type: Response
-            category = category_.css('a::text').get()
+            category: str | None = category_.css('a::text').get()
             if category:
                 category = category.strip()
             href = category_.css('a::attr(href)').get()
@@ -20,7 +28,7 @@ class SpiderMan(scrapy.Spider):
     def parse_products(self, response: Response, **kwargs: Any) -> Any:
         products = response.css('div.list_item_wrapp.item_wrap')
         for product in products:  # type: Response
-            title = product.css('div.item-title a span::text').get()
+            title: str | None = product.css('div.item-title a span::text').get()
             if title:
                 title = title.strip()
             href = product.css('div.item-title a::attr(href)').get()
@@ -32,36 +40,19 @@ class SpiderMan(scrapy.Spider):
             yield response.follow(next_page, self.parse_products, meta={'category': response.meta.get('category')})
 
     def parse_card(self, response: Response, **kwargs: Any) -> Any:
-        article = response.css('div.article.iblock span.value::text').get()
-        if article:
-            article = article.strip()
-        price = response.css('div.price::text').get()
-        if price:
-            price = price.strip()
-        description = response.css('div.preview_text::text').get()
-        if description:
-            description = description.strip()
-        img = response.css('img::attr(src)').get()
-        if img:
-            img = img.strip()
-        yield {'category': response.meta.get('category'),
-               'article': article,
-               'title': response.meta.get('title'),
-               'price': price,
-               'description': description,
-               'img': img,
-               'href': response.meta.get('href'),
-               }
+        loader = ItemLoader(item=Product(), response=response)
+        # loader.default_input_processor = MapCompose(strip)
+        loader.default_output_processor = TakeFirst()
+        loader.add_value('category', response.meta.get('category'))
+        loader.add_css('article', 'div.article.iblock span.value::text')
+        loader.add_css('brand', "a.brand_picture img::attr(title)")
+        loader.add_value('title', response.meta.get('title'))
+        loader.add_css('price', 'div.price::text', MapCompose(strip, clear_rub, to_float))
+        loader.add_css('description', 'div.preview_text::text')
+        loader.add_css('img', 'div.offers_img.wof img::attr(src)')
+        loader.add_css('img', "div.slides li a::attr(href)", MapCompose(url_join), Join(', '))
+        loader.add_value('link', response.urljoin(response.meta.get('href')))
+        if not loader.get_output_value('brand'):
+            loader.add_value('brand', checkout_brand_file_in_title(loader.get_output_value('title')))
+        yield loader.load_item()
 
-
-class BrandSpider(scrapy.Spider):
-    name = 'brand'
-    start_urls = ['https://yacht-parts.ru/info/brands/']
-
-    def parse(self, response: Response, **kwargs: Any) -> Any:
-        brands = response.css("ul.brands_list li a::attr(href)").getall()
-        for brand in brands:  # type: str
-            yield {'brand': brand.split('/')[-2].replace('_', ' ')}
-        next_page = response.css('li.flex-nav-next:not(.disabled) a::attr(href)').get()
-        if next_page:
-            yield response.follow(next_page, self.parse)

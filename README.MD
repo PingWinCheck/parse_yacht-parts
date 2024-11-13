@@ -1,21 +1,8 @@
 # Парсинг сайта yacht-parts.ru
 
-Получение полного каталога товаров и выгрузка их в json файл в формате:
+Получение полного каталога товаров
 
-```json
-[
-  {
-    "category": "example", 
-    "article": "example", 
-    "title": "example",
-    "price": "example", 
-    "description": "example",
-    "img": "example",
-    "href": "example"
-  }
-]
-```
-При необходимости выгрузки в excel файл с дополнительным полем "брэнды" выполнить пункты [4,5](#команды-для-ввода-в-терминале-корневой-директории-проекта)
+
 ### Для запуска необходимо следующее:
 Установлен python3.12, poetry 
 
@@ -26,8 +13,9 @@ https://python-poetry.org/docs/#installing-with-the-official-installer
 https://www.python.org/downloads/
 
 ### Команды для ввода в терминале корневой директории проекта
-1) poetry install
-2) cd app
-3) scrapy crawl spiderman -O output.json
-4) scrapy crawl brand -O brands.json
-5) python brand_connector_dump_excel.py
+1. poetry install
+2. cd app
+3. Запуск парсера
+3.1. Используйте scrapy crawl spiderman если вам не нужно хранить состояние программы
+3.2. Используйте scrapy crawl spiderman -s JOBDIR=dirjob для того чтобы сохранить состояние, и иметь возможность остановки программы, и продолжить парсинг в дальнейшем с этого же места. Для продолжения воспользоваться этой же командой. Для остановки нажмите один раз ctrl+c и дождитесь завершения программы
+4. По окончанию работы программы, в корне будет создан Excel файл result.xlsx с результатами парсинга
